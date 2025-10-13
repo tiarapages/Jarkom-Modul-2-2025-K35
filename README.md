@@ -164,3 +164,51 @@ iface eth0 inet static
 
   up echo nameserver 192.168.122.1 > /etc/resolv.conf
 ```
+
+# 2
+Bagian ini menjelaskan bahwa **Eonwe**, sebagai router utama, berperan untuk **menghubungkan jaringan internal** (LAN Barat, LAN Timur, dan DMZ) dengan **jaringan eksternal (internet)**.  
+Agar host di jaringan internal (yang menggunakan IP privat) dapat mengakses jaringan luar (yang menggunakan IP publik), diperlukan mekanisme **NAT (Network Address Translation)**.
+
+Tanpa NAT, paket dari IP privat seperti `10.81.x.x` akan ditolak oleh jaringan luar karena IP tersebut tidak dapat dirutekan di internet.  
+Dengan NAT, router akan menerjemahkan alamat sumber paket internal menjadi alamat IP publik milik router pada interface WAN-nya.  
+Sehingga, router bertindak sebagai perantara yang meneruskan lalu lintas keluar dan mencatat sesi koneksi agar balasan dari luar dapat diarahkan kembali ke host yang benar. Yang pertama yaitu menambahkan `nano /root/.bashrc` pada semua node agar jika di refresh tidak hilang. lalu tambahkan script berikut
+
+```
+# pada Eonwe
+iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE -s 10.81.0.0/16
+
+# pada node lainnya
+echo nameserver 192.168.122.1 > /etc/resolv.conf
+```
+Lalu jika sudah, kita dapat melihat nameserver, lalu restart node terlebih dahulu dan dapat melakukan `ping`
+
+```
+cat /etc/resolv.conf
+ping google.com
+```
+<img width="1228" height="453" alt="Screenshot 2025-10-13 153526" src="https://github.com/user-attachments/assets/98982f45-42d6-48dd-9136-0bad5413f377" />
+
+# 3
+
+Bagian ini memastikan bahwa **semua klien di jaringan Barat (Earendil, Elwing)** dan **Timur (Círdan, Elrond, Maglor)** dapat saling berkomunikasi melewati router **Eonwe**.  
+Karena Eonwe sudah memiliki beberapa interface (10.81.1.1, 10.81.2.1, 10.81.3.1) dan **IP forwarding** telah diaktifkan pada tahap NAT, maka paket antar subnet akan otomatis diteruskan oleh router.
+
+Dengan demikian:
+- Klien di jaringan Barat dapat mengirim paket ke jaringan Timur melalui Eonwe.  
+- Klien di jaringan Timur juga dapat menjangkau jaringan DMZ (Sirion, Tirion, Valmar, dsb).  
+- Tidak perlu routing tambahan di klien karena semua sudah diarahkan melalui gateway masing-masing (IP router Eonwe).
+
+Agar setiap klien dapat mengunduh paket atau update dari internet sebelum DNS internal aktif, ditambahkan resolver sementara `192.168.122.1` pada file konfigurasi jaringan masing-masing klien.
+
+Contoh :
+- Dari Earendil (Barat), lakukan ping ke Elrond (Timur) menggunakan `root@Earendil:~# ping 10.81.2.3` 
+<img width="841" height="147" alt="Screenshot 2025-10-13 154245" src="https://github.com/user-attachments/assets/571f5393-fd86-4a1a-8c76-7d5a5f35ca83" />
+
+- Dari Elrond (Timur), lakukan ping ke Melwig(Barat) menggunakan `root@Elrond:~# ping 10.81.1.3`
+  <img width="810" height="117" alt="Screenshot 2025-10-13 154314" src="https://github.com/user-attachments/assets/cfb091f5-eaa2-4230-815f-3607a00512e5" />
+
+
+
+
+
+
