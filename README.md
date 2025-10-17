@@ -207,6 +207,204 @@ Contoh :
 - Dari Elrond (Timur), lakukan ping ke Melwig(Barat) menggunakan `root@Elrond:~# ping 10.81.1.3`
   <img width="810" height="117" alt="Screenshot 2025-10-13 154314" src="https://github.com/user-attachments/assets/cfb091f5-eaa2-4230-815f-3607a00512e5" />
 
+  # 4
+
+  Di Node Tirion
+  
+```
+  mkdir /etc/bind/zones
+  nano /etc/bind/named.conf.local
+ ```
+Edit Konfigurasi Lokal
+```
+zone "k35.com" {
+ type master;
+ file "/etc/bind/zones/k35.com";
+ notify yes;
+ allow-transfer { 10.81.3.4; };
+ also-notify { 10.81.3.4; };
+ };
+ nano /etc/bind/named.conf.options
+ forwarders {
+ 192.168.122.1;
+ };
+ nano /etc/bind/zone.template
+ $TTL    604800          ; Waktu cache default (detik)
+ @       IN      SOA     localhost. root.localhost. (
+ 2025100401 ; Serial (format YYYYMMDDXX)
+ 604800     ; Refresh (1 minggu)
+ 86400      ; Retry (1 hari)
+ 2419200    ; Expire (4 minggu)
+ 604800 )   ; Negative Cache TTL
+ ;
+ @       IN      NS      localhost.
+ @       IN      A       127.0.0.1
+```
+Masukkan `cp /etc/bind/zone.template /etc/bind/zones/k35.com`
+dan edit konfigurasi zones 35 `nano /etc/bind/zones/k35.com`
+
+```
+ $TTL    604800          ; Waktu cache default (detik)
+@       IN      SOA     k35.com. root.k35.com. (
+ 2025100401 ; Serial (format YYYYMMDDXX)
+ 604800     ; Refresh (1 minggu)
+ 86400      ; Retry (1 hari)
+ 2419200    ; Expire (4 minggu)
+ 604800 )   ; Negative Cache TTL
+ ;
+ @       IN      NS      ns1.k35.com.
+ @       IN      NS      ns2.k35.com.
+ @       IN      A       10.81.3.2;
+ ns1     IN      A       10.81.3.3;
+ ns2     IN      A       10.81.3.4;
+```
+Restart service bind9 ` service bind9 restart`
+Di Node Valmar
+Edit Konfigurasi Lokal ` nano /etc/bind/named.conf.local`
+
+```
+ zone "k35.com" {  
+type slave;  
+masters { 10.81.3.3; };
+ file "/etc/bind/zones/k35.com";  
+};
+```
+
+Restart service bind9 ` service bind9 restart`
+
+di client masukkan nameserver kedalam solv.conf
+```
+nameserver 192.239.3.3
+nameserver 192.239.3.4
+```
+<img width="820" height="310" alt="image" src="https://github.com/user-attachments/assets/cf3ea9a3-e757-4441-a420-a7e86ae59b83" />
+
+Hasil Ping yang berfungsi
+
+# 5
+Di Node Tirion Lakukan Konfigurasi zone ` nano /etc/bind/zones/k56.com`
+```
+ $TTL    604800          ; Waktu cache default (detik)
+ @       IN      SOA     k35.com. root.k35.com. (
+ 2025100401 ; Serial (format YYYYMMDDXX)
+ 604800     ; Refresh (1 minggu)
+ 86400      ; Retry (1 hari)
+ 2419200    ; Expire (4 minggu)
+ 604800 )   ; Negative Cache TTL
+ ;
+ @       IN      NS      ns1.k35.com.
+ @       IN      NS      ns2.k35.com.
+ @       IN      A       10.81.3.2;
+ ns1     IN      A       10.81.3.3;
+ ns2     IN      A       10.81.3.4;
+ eonwe   IN      A       10.81.1.1;
+ earendil IN     A       10.81.1.2;
+ elwing  IN      A       10.81.1.3;
+ cirdan  IN      A       10.81.2.2;
+ elrond  IN      A       10.81.2.3;
+ maglor  IN      A       10.81.2.4;
+ sirion  IN      A       10.81.3.2;
+ lindon  IN      A       10.81.3.5;
+ vingilot IN     A       10.81.3.6;
+```
+Restart service agar berjalan `service bind9 restart`
+<img width="703" height="192" alt="image" src="https://github.com/user-attachments/assets/0c01b20e-2ac0-44ae-b6e5-6e475e7f45ce" />
+
+# 6
+Jalankan dig untuk melihat serial number ` dig @10.81.3.3 k35.com SOA`
+<img width="1184" height="477" alt="image" src="https://github.com/user-attachments/assets/14c86100-a600-4098-9075-4377223903a0" />
+Jalankan dig juga untuk melihat serial number `dig @192.239.3.4 k35.com SOA`
+<img width="1167" height="455" alt="image" src="https://github.com/user-attachments/assets/5144f5e0-152f-472a-9b82-53943c46e6e0" />
+
+# 7
+Di Tirion
+Edit konfigurasi zones `nano /etc/bind/zones/k35.com`
+```
+ $TTL    604800          ; Waktu cache default (detik)
+ @       IN      SOA     k35.com. root.k35.com. (
+ 2025100401 ; Serial (format YYYYMMDDXX)
+ 604800     ; Refresh (1 minggu)
+ 86400      ; Retry (1 hari)
+ 2419200    ; Expire (4 minggu)
+ 604800 )   ; Negative Cache TTL
+ ;
+ @       IN      NS      ns1.k35.com.
+ @       IN      NS      ns2.k35.com.
+ @       IN      A       10.81.3.2;
+ ns1     IN      A       10.81.3.3;
+ ns2     IN      A       10.81.3.4;
+ eonwe   IN      A       10.81.1.1;
+ earendil IN      A       10.81.1.2;
+ elwing  IN      A       10.81.1.3;
+ cirdan  IN      A       10.81.2.2;
+ elrond  IN      A       10.81.2.3;
+ maglor  IN      A       10.81.2.4;
+ sirion  IN      A       10.81.3.2;
+ lindon  IN      A       10.81.3.5;
+ vingilot IN      A       10.81.3.6;
+ www     IN      CNAME   sirion.k35.com.
+ static  IN      CNAME   lindon.k35.com.
+ app     IN      CNAME   vingilot.k35.com.
+```
+Restart kembali service `service bind9 restart`
+<img width="850" height="589" alt="image" src="https://github.com/user-attachments/assets/a9b2d0db-8ba0-4202-8d3a-90d33b5a794a" />
+<img width="803" height="515" alt="image" src="https://github.com/user-attachments/assets/26ec0c8f-5d2f-4900-b891-e9a27bec44c7" />
+
+# 8
+Di Tirion
+Edit Konfigurasi Lokal ` nano /etc/bind/named.conf.local`
+```
+zone "3.239.192.in-addr.arpa" {
+ type master;
+ file "/etc/bind/zones/3.239.192.in-addr.arpa";
+ allow-transfer { 10.81.3.4; };
+ };
+```
+
+Edit Konfigurasi zones addr.arpa `nano /etc/bind/zones/3.239.192.in-addr.arpa`
+```
+$TTL    604800          ; Waktu cache default (detik)
+ @       IN      SOA      k35.com. root.k35.com. (
+ 2025100401 ; Serial (format YYYYMMDDXX)
+ 604800     ; Refresh (1 minggu)
+ 86400      ; Retry (1 hari)
+ 2419200    ; Expire (4 minggu)
+ 604800 )   ; Negative Cache TTL
+ ;
+ 3.239.192.in-addr.arpa.       IN      NS      k35.com.
+ 3       IN      PTR     k35.com.
+ 2       IN      PTR     sirion.k35.com.
+ 5       IN      PTR     lindon.k35.com.
+ 6       IN      PTR     vingilot.k35.com.
+```
+Restart kembali service bind9 `service bind9 restart`
+
+Di Node Valmar
+Edit Konfigurasi Lokal `nano /etc/bind/named.conf.local`
+```
+zone "3.239.192.in-addr.arpa" {
+ type slave;
+ masters { 10.81.3.3; };
+ file "/etc/bind/zones/3.239.192.in-addr.arpa";
+ };
+```
+Restart kembali service `service bind9 restart`
+Dan jalankan tes `host -t PTR 10.81.3.3`
+
+# 9
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
