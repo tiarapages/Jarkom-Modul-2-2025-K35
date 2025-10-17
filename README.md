@@ -392,9 +392,156 @@ Restart kembali service `service bind9 restart`
 Dan jalankan tes `host -t PTR 10.81.3.3`
 
 # 9
+Di Node Lindon
+`apt update && apt install nginx -y`
+
+Dan buat direktori serta ubha hak akses
+```
+mkdir -p /var/www/static/annals
+chown -R www-data:www-data /var/www/static
+```
+Edit static html dan log txt
+```
+ echo "index for static site" | tee /var/www/static/index.html
+ echo "log-2025.txt" | tee /var/www/static/annals/log-2025.txt
+```
+
+Edit nginx sites ip ` nano /etc/nginx/sites-available/000-default-ip-block`
+```
+ server {
+ listen 80 default_server;
+ listen [::]:80 default_server;
+ server_name _;
+ return 444;
+ }
+```
+Jalankan list nginx melalui node `ln -s /etc/nginx/sites-available/000-default-ip-block /etc/nginx/sites
+enabled/000-default-ip-block`
+
+Edit defaul nginx ` nano /etc/nginx/sites-enabled/default`
+
+Dan Hapus default_server di listen 80
+`nano /etc/nginx/sites-available/static.k35.com`
+```
+ server {
+ listen 80;
+ listen [::]:80;
+ server_name static.k56.com;
+ root /var/www/static;
+ index index.html;
+ if ($host != "static.k56.com") { return 444; }
+location / {
+ try_files $uri $uri/ =404;
+ }
+ location /annals/ {
+ autoindex on;
+ autoindex_exact_size off;
+ autoindex_localtime on;
+ disable_symlinks on;
+ }
+ add_header X-Content-Type-Options nosniff;
+ add_header Referrer-Policy no-referrer;
+ add_header X-Frame-Options SAMEORIGIN;
+ }
+```
+enable nginx 
+```
+ln -s /etc/nginx/sites-available/static.k56.com /etc/nginx/sites
+enabled/
+nginx -t
+service nginx restart
+```
+Jalankan protokol dan tes
+```
+ curl -I http://static.k56.com/
+ curl -I http://static.k56.com/annals/
+ curl -I http://192.239.3.5/
+```
+<img width="1919" height="831" alt="image" src="https://github.com/user-attachments/assets/cb92dd52-9e0c-4e92-8203-4163237e5d7e" />
+<img width="990" height="385" alt="image" src="https://github.com/user-attachments/assets/410fec47-d23d-4d0b-a691-f1d69ef07b28" />
 
 
+# 10
+Di Node Vingilot
+Install protokol nginx
+```
+ apt update && apt install nginx php8.4-fpm php8.4-cli -y
+ service php8.4-fpm start --now
+```
+Buat Folder app dan edit hak akses
+```
+ mkdir -p /var/www/app
+ chown -R www-data:www-data /var/www/app
+```
+Edit hasil nginx
+```
+tee /var/www/app/index.php >/dev/null <<'PHP'
+ <?php
+ echo "<h1>Welcome to app.&lt;xxxx&gt;.com</h1>";
+ echo '<p><a href="/about">About</a></p>';
+ PHP
+ tee /var/www/app/about.php >/dev/null <<'PHP'
+ <?php
+ echo "<h1>About</h1><p>This is the about page served via PHP-FPM.</p>";
+ PHP
+ ```
+Edit ip block agar bisa berjalan ` nano /etc/nginx/sites-available/000-default-ip-block`
+```
+server {
+ listen 80 default_server;
+ listen [::]:80 default_server;
+ server_name _;
+ return 444;
+ }
+```
+Aktifkan konfigurasinya
+```
+ ln -s /etc/nginx/sites-available/000-default-ip-block /etc/nginx/sites
+enabled/000-default-ip-block
+```
+edit sistem default agar tidak ada defaul server di listen 80
+```
+nano /etc/nginx/sites-enabled/default
+ //Hapus default_server di listen 80
+ nano /etc/nginx/sites-available/app.k56.com
+ server {
+listen 80;
+ listen [::]:80;
+ server_name app.k56.com;
+ root /var/www/app;
+ index index.php index.html;
+ if ($host != "app.k56.com") { return 444; }
+ location / {
+ try_files $uri $uri/ $uri.php?$args;
+ }
+ location ~ \.php$ {
+ include snippets/fastcgi-php.conf;
+ fastcgi_pass unix:/run/php/php8.4-fpm.sock;
+ fastcgi_param SCRIPT_FILENAME 
+$document_root$fastcgi_script_name;
+ fastcgi_read_timeout 60s;
+ }
+ location ~* \.(?:env|ini|log|backup|bak)$ { deny all; }
+ add_header X-Content-Type-Options nosniff;
+ add_header Referrer-Policy no-referrer;
+ add_header X-Frame-Options SAMEORIGIN;
+ }
+```
+Jalankan sistem default nginx
+```
+ ln -s /etc/nginx/sites-available/app.k56.com /etc/nginx/sites-enabled/
+ nginx -t
+ service nginx restart
+```
+Uji coba sistem
+```
+curl -I http://app.k56.com/
+ curl -I http://app.k56.com/about
+ curl -I http://192.239.3.6/
+```
+<img width="1000" height="511" alt="image" src="https://github.com/user-attachments/assets/ef2a8319-5cb4-4429-9f67-73cfd0f84923" />
 
+# 11
 
 
 
