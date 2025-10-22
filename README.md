@@ -366,170 +366,218 @@ Domain	Mengarah ke	IP
 
 # 8
 
-reverse DNS zone configuration (PTR records) untuk jaringan DMZ yang berisi Sirion, Lindon, dan Vingilot. Agar IP bisa dicari balik (reverse lookup) dan hasilnya mengembalikan hostname masing-masing.
+Konfigurasi reverse DNS zone dilakukan agar setiap alamat IP dalam segmen jaringan tertentu dapat diterjemahkan kembali menjadi nama host (hostname).
+Dengan kata lain, reverse DNS digunakan untuk melakukan pencarian balik (reverse lookup) dari IP → hostname menggunakan catatan PTR (Pointer Record).
 
-### Membuat file tirion.sh dan valmar.sh
+### Dalam konteks ini:
 
-### Menambahkan script pada client `cirdan`
+- Tirion (ns1) bertindak sebagai DNS Master.
+
+- Valmar (ns2) bertindak sebagai DNS Slave.
+
+- Sirion, Lindon, dan Vingilot adalah host yang berada di segmen DMZ (10.81.3.0/24).
+
+### Tujuannya agar ketika dilakukan query seperti:
 ```
-echo "nameserver 10.81.3.3" > /etc/resolv.conf
+host -t PTR 10.81.3.10
 ```
+
+### maka hasilnya menampilkan `10.3.81.10.in-addr.arpa domain name pointer sirion.k35.com.`
 
 <img width="649" height="50" alt="Screenshot 2025-10-21 003459" src="https://github.com/user-attachments/assets/dd54f311-5fb2-49fb-960e-24df7d106b8f" />
 
 # 9
-Di Node Lindon
-`apt update && apt install nginx -y`
 
-Dan buat direktori serta ubha hak akses
+Pada tahap ini, Lindon berfungsi sebagai web server statis yang akan diakses melalui hostname static.k35.com. Server ini harus mampu menampilkan isi direktori /annals/ secara langsung (directory listing / autoindex) melalui protokol HTTP, bukan melalui IP address. Fungsionalitas ini mengilustrasikan bagaimana layanan web di-deploy pada lingkungan DNS yang telah terintegrasi, di mana akses ke web dilakukan berdasarkan nama domain, bukan alamat IP mentah.
+
+### Langkah Teknis di Server Lindon (static.k35.com)   
+1. Instalasi dan aktivasi web server (nginx atau Apache)    
+2. Pembuatan direktori konten statis   
+3. Konfigurasi Virtual Host    
+4. Aktifkan konfigurasi dan reload nginx   
+
+### Pengujian dari Client (Cirdan)
+Setelah konfigurasi DNS dan web server aktif, lakukan pengujian dari sisi client:
 ```
-mkdir -p /var/www/static/annals
-chown -R www-data:www-data /var/www/static
-```
-Edit static html dan log txt
-```
- echo "index for static site" | tee /var/www/static/index.html
- echo "log-2025.txt" | tee /var/www/static/annals/log-2025.txt
+lynx http://static.k35.com/
+lynx http://static.k35.com/annals/
+lynx http://192.239.3.5/
 ```
 
-Edit nginx sites ip ` nano /etc/nginx/sites-available/000-default-ip-block`
-```
- server {
- listen 80 default_server;
- listen [::]:80 default_server;
- server_name _;
- return 444;
- }
-```
-Jalankan list nginx melalui node `ln -s /etc/nginx/sites-available/000-default-ip-block /etc/nginx/sites
-enabled/000-default-ip-block`
-
-Edit defaul nginx ` nano /etc/nginx/sites-enabled/default`
-
-Dan Hapus default_server di listen 80
-`nano /etc/nginx/sites-available/static.k35.com`
-```
- server {
- listen 80;
- listen [::]:80;
- server_name static.k56.com;
- root /var/www/static;
- index index.html;
- if ($host != "static.k56.com") { return 444; }
-location / {
- try_files $uri $uri/ =404;
- }
- location /annals/ {
- autoindex on;
- autoindex_exact_size off;
- autoindex_localtime on;
- disable_symlinks on;
- }
- add_header X-Content-Type-Options nosniff;
- add_header Referrer-Policy no-referrer;
- add_header X-Frame-Options SAMEORIGIN;
- }
-```
-enable nginx 
-```
-ln -s /etc/nginx/sites-available/static.k56.com /etc/nginx/sites
-enabled/
-nginx -t
-service nginx restart
-```
-Jalankan protokol dan tes
-```
- curl -I http://static.k56.com/
- curl -I http://static.k56.com/annals/
- curl -I http://192.239.3.5/
-```
 <img width="1919" height="831" alt="image" src="https://github.com/user-attachments/assets/cb92dd52-9e0c-4e92-8203-4163237e5d7e" />
 <img width="990" height="385" alt="image" src="https://github.com/user-attachments/assets/410fec47-d23d-4d0b-a691-f1d69ef07b28" />
 
 
 # 10
-Di Node Vingilot
-Install protokol nginx
+
+Pada tahap ini, Vingilot berperan sebagai web server dinamis yang melayani domain app.k35.com. Server ini menjalankan PHP-FPM (FastCGI Process Manager) untuk mengeksekusi kode PHP secara efisien.
+
+### Website ini memiliki dua halaman utama:
+
+- index.php → sebagai beranda
+
+- about.php → sebagai halaman “About”
+
+Selain itu, diterapkan URL rewriting agar pengguna dapat mengakses /about tanpa perlu menulis ekstensi .php. Akses hanya boleh dilakukan menggunakan hostname app.k35.com, bukan melalui alamat IP secara langsung.
+
+### Membuat file .sh
+1. membuat file nano
+  
+2. memberi izin eksekusi
+   ```
+   chmod +x <filename>.sh
+   ```
+   
+3.  Menjalankan file
+   ```
+  ./<filename>.sh
+  ```
+
+### Langkah Konfigurasi Teknis   
+
+1. Instalasi Paket Web Dinamis
+   
+2. Struktur Direktori Web
+   
+3. Konfigurasi Virtual Host Nginx
+
+### Pengujian di Client (Cirdan)
+
+Gunakan lynx untuk memastikan akses melalui hostname berhasil:
 ```
- apt update && apt install nginx php8.4-fpm php8.4-cli -y
- service php8.4-fpm start --now
+lynx http://app.k35.com/
+lynx http://app.k35.com/about
+lynx http://10.81.3.6/
 ```
-Buat Folder app dan edit hak akses
-```
- mkdir -p /var/www/app
- chown -R www-data:www-data /var/www/app
-```
-Edit hasil nginx
-```
-tee /var/www/app/index.php >/dev/null <<'PHP'
- <?php
- echo "<h1>Welcome to app.&lt;xxxx&gt;.com</h1>";
- echo '<p><a href="/about">About</a></p>';
- PHP
- tee /var/www/app/about.php >/dev/null <<'PHP'
- <?php
- echo "<h1>About</h1><p>This is the about page served via PHP-FPM.</p>";
- PHP
- ```
-Edit ip block agar bisa berjalan ` nano /etc/nginx/sites-available/000-default-ip-block`
-```
-server {
- listen 80 default_server;
- listen [::]:80 default_server;
- server_name _;
- return 444;
- }
-```
-Aktifkan konfigurasinya
-```
- ln -s /etc/nginx/sites-available/000-default-ip-block /etc/nginx/sites
-enabled/000-default-ip-block
-```
-edit sistem default agar tidak ada defaul server di listen 80
-```
-nano /etc/nginx/sites-enabled/default
- //Hapus default_server di listen 80
- nano /etc/nginx/sites-available/app.k56.com
- server {
-listen 80;
- listen [::]:80;
- server_name app.k56.com;
- root /var/www/app;
- index index.php index.html;
- if ($host != "app.k56.com") { return 444; }
- location / {
- try_files $uri $uri/ $uri.php?$args;
- }
- location ~ \.php$ {
- include snippets/fastcgi-php.conf;
- fastcgi_pass unix:/run/php/php8.4-fpm.sock;
- fastcgi_param SCRIPT_FILENAME 
-$document_root$fastcgi_script_name;
- fastcgi_read_timeout 60s;
- }
- location ~* \.(?:env|ini|log|backup|bak)$ { deny all; }
- add_header X-Content-Type-Options nosniff;
- add_header Referrer-Policy no-referrer;
- add_header X-Frame-Options SAMEORIGIN;
- }
-```
-Jalankan sistem default nginx
-```
- ln -s /etc/nginx/sites-available/app.k56.com /etc/nginx/sites-enabled/
- nginx -t
- service nginx restart
-```
-Uji coba sistem
-```
-curl -I http://app.k56.com/
- curl -I http://app.k56.com/about
- curl -I http://192.239.3.6/
-```
-<img width="1000" height="511" alt="image" src="https://github.com/user-attachments/assets/ef2a8319-5cb4-4429-9f67-73cfd0f84923" />
 
 # 11
 
+Pada tahap ini, Sirion berfungsi sebagai reverse proxy server yang mengarahkan permintaan (request) HTTP ke dua backend berbeda berdasarkan path (rute URL).
+Tujuannya adalah membangun path-based routing, di mana:
+- /static diteruskan ke Lindon (web statis)
 
+- /app diteruskan ke Vingilot (web dinamis)
+
+Sirion juga menerima akses dari dua domain:
+
+- www.k35.com (domain kanonik utama)
+
+- sirion.k35.com (nama host internal)
+
+Selain itu, konfigurasi harus meneruskan header penting:
+
+- Host → agar backend tahu domain asli yang diminta klien.
+
+- X-Real-IP → agar backend mengetahui alamat IP klien sebenarnya (bukan IP Sirion).
+
+Dengan cara ini, Sirion bertindak sebagai gerbang depan (front gateway) untuk semua akses web.
+
+### Langkah Konfigurasi Teknis
+
+1. Instalasi dan Persiapan
+   
+2. Struktur dan Alamat Backend
+   
+3. Konfigurasi Reverse Proxy
+
+### Uji Akses dari Client
+
+Pastikan resolusi DNS dan routing berjalan dengan benar.
+
+- Akses ke Web Statis (Menampilkan isi halaman dari Lindon (web statis)).
+```
+lynx http://www.k35.com/static/
+```
+
+- Akses ke Web Dinamis (Menampilkan konten dari Vingilot (web dinamis)).
+```
+lynx http://www.k35.com/app/
+```
+
+` Akses langsung via IP
+```
+lynx http://10.81.3.3/
+```
+
+# 12
+
+Pada tahap ini, Sirion (reverse proxy utama) diperkuat dengan lapisan keamanan tambahan untuk melindungi direktori sensitif /admin.
+Metode autentikasi yang digunakan adalah HTTP Basic Authentication, di mana pengguna harus memasukkan username dan password sebelum dapat mengakses path /admin.
+
+Jika pengguna mencoba mengakses /admin tanpa kredensial atau dengan kredensial salah, maka akses harus ditolak (HTTP 401 Unauthorized).
+Namun, jika username dan password benar, maka akses akan diizinkan dan halaman backend ditampilkan.
+
+Tujuan langkah ini adalah memastikan bahwa path administratif tidak dapat diakses publik, melainkan hanya oleh pengguna yang memiliki izin.
+
+### Langkah Konfigurasi Teknis
+
+1. Instalasi Paket Pendukung
+
+2. Membuat File Password
+
+3. Konfigurasi Server Block di Sirion
+
+### Uji Akses dari Client
+
+Gunakan lynx atau curl untuk menguji akses.
+```
+curl -I http://www.k35.com/admin/
+curl -I -u admin:jarkom http://www.k35.com/admin/ (benar)
+curl -I -u admin:admin http://www.k35.com/admin/ (salah)
+```
+
+# 13
+Pada tahap ini, konfigurasi dilakukan pada Sirion, yang berfungsi sebagai reverse proxy dalam sistem jaringan domain k35.com.
+Tujuannya adalah untuk menetapkan hostname kanonik (www.k35.com) sebagai satu-satunya nama domain resmi yang digunakan untuk mengakses layanan web.
+
+
+Secara teknis, konfigurasi ini memastikan bahwa setiap permintaan HTTP yang masuk ke Sirion — baik menggunakan alamat IP langsung (10.81.3.3) maupun subdomain sirion.k35.com — akan di-redirect secara permanen (HTTP 301) menuju www.k35.com.
+
+Konfigurasi ini juga menjadi langkah terakhir dalam penyatuan sistem DNS dan layanan web antara node:
+
+- Lindon (static site)
+
+- Vingilot (dynamic PHP site)
+
+- Sirion (reverse proxy dan redirect handler)
+
+#### Pengujian
+
+- Akses via IP → HARUS 301 ke www
+```
+curl -I http://10.81.3.3/
+```
+
+- Akses sirion.k35.com → HARUS 301 ke www
+```
+curl -I http://sirion.k35.com/app/about
+```
+
+- Akses kanonik → HARUS 200/OK (dilayani oleh vhost www)
+```
+curl -I http://www.k35.com/static/
+curl -I http://www.k35.com/app/
+curl -I http://www.k35.com/app/about
+```
+
+- Akses admin → HARUS 401 bila tanpa kredensial, 200 bila pakai kredensial
+```
+curl -I http://www.k35.com/admin/
+curl -I -u admin:password http://www.k35.com/admin/
+```
+
+# 14
+
+Pada tahap ini, konfigurasi berfokus pada pelacakan IP asli klien ketika trafik web melewati reverse proxy (Sirion) sebelum mencapai Vingilot (backend aplikasi PHP-FPM).
+Secara default, ketika permintaan dikirim melalui reverse proxy seperti Nginx, Vingilot hanya melihat IP Sirion (misalnya 10.81.3.2) karena koneksi TCP terakhir berasal dari proxy tersebut. Agar log tetap akurat, kita harus meneruskan informasi IP asli klien menggunakan header X-Real-IP dan X-Forwarded-For dari Sirion ke Vingilot, kemudian mengonfigurasi Nginx di Vingilot agar membaca header tersebut dan menuliskannya ke access log.
+
+
+Langkah ini penting agar catatan log (/var/log/nginx/access.log) di Vingilot benar-benar mencerminkan siapa pengunjung aslinya, bukan hanya proxy yang meneruskan koneksi.
+Hasil akhir yang diharapkan:
+
+-Saat klien (mis. Cirdan) mengakses situs melalui www.k35.com, IP yang muncul di log Vingilot adalah IP klien, bukan IP Sirion.
+
+-Semua permintaan yang datang melalui Sirion masih diteruskan dengan header Host dan X-Real-IP yang benar.
 
 
 
