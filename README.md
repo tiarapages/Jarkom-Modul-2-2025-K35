@@ -379,7 +379,7 @@ Dengan kata lain, reverse DNS digunakan untuk melakukan pencarian balik (reverse
 
 ### Tujuannya agar ketika dilakukan query seperti:
 ```
-host -t PTR 10.81.3.10
+host -t PTR 10.81.3.3
 ```
 
 ### maka hasilnya menampilkan `10.3.81.10.in-addr.arpa domain name pointer sirion.k35.com.`
