@@ -356,54 +356,26 @@ ping app.k35.com
 
 Domain	Mengarah ke	IP
 - www.k35.com -> sirion.k35.com
-<img width="936" height="467" alt="Screenshot 2025-10-21 002901" src="https://github.com/user-attachments/assets/efa4bec5-db61-481a-92b8-58d7d83f5934" />
 
 - static.k35.com	-> lindon.k35.com
   
 - app.k35.com	-> vingilot.k35.com
 
+<img width="936" height="467" alt="Screenshot 2025-10-21 002901" src="https://github.com/user-attachments/assets/efa4bec5-db61-481a-92b8-58d7d83f5934" />
 
 
 # 8
-Di Tirion
-Edit Konfigurasi Lokal ` nano /etc/bind/named.conf.local`
+
+reverse DNS zone configuration (PTR records) untuk jaringan DMZ yang berisi Sirion, Lindon, dan Vingilot. Agar IP bisa dicari balik (reverse lookup) dan hasilnya mengembalikan hostname masing-masing.
+
+### Membuat file tirion.sh dan valmar.sh
+
+### Menambahkan script pada client `cirdan`
 ```
-zone "3.239.192.in-addr.arpa" {
- type master;
- file "/etc/bind/zones/3.239.192.in-addr.arpa";
- allow-transfer { 10.81.3.4; };
- };
+echo "nameserver 10.81.3.3" > /etc/resolv.conf
 ```
 
-Edit Konfigurasi zones addr.arpa `nano /etc/bind/zones/3.239.192.in-addr.arpa`
-```
-$TTL    604800          ; Waktu cache default (detik)
- @       IN      SOA      k35.com. root.k35.com. (
- 2025100401 ; Serial (format YYYYMMDDXX)
- 604800     ; Refresh (1 minggu)
- 86400      ; Retry (1 hari)
- 2419200    ; Expire (4 minggu)
- 604800 )   ; Negative Cache TTL
- ;
- 3.239.192.in-addr.arpa.       IN      NS      k35.com.
- 3       IN      PTR     k35.com.
- 2       IN      PTR     sirion.k35.com.
- 5       IN      PTR     lindon.k35.com.
- 6       IN      PTR     vingilot.k35.com.
-```
-Restart kembali service bind9 `service bind9 restart`
-
-Di Node Valmar
-Edit Konfigurasi Lokal `nano /etc/bind/named.conf.local`
-```
-zone "3.239.192.in-addr.arpa" {
- type slave;
- masters { 10.81.3.3; };
- file "/etc/bind/zones/3.239.192.in-addr.arpa";
- };
-```
-Restart kembali service `service bind9 restart`
-Dan jalankan tes `host -t PTR 10.81.3.3`
+<img width="649" height="50" alt="Screenshot 2025-10-21 003459" src="https://github.com/user-attachments/assets/dd54f311-5fb2-49fb-960e-24df7d106b8f" />
 
 # 9
 Di Node Lindon
