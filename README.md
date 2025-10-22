@@ -483,16 +483,13 @@ Dengan cara ini, Sirion bertindak sebagai gerbang depan (front gateway) untuk se
 ### Uji Akses dari Client
 
 Pastikan resolusi DNS dan routing berjalan dengan benar.
-
-- Akses ke Web Statis (Menampilkan isi halaman dari Lindon (web statis)).
 ```
-lynx http://www.k35.com/static/
+curl -I http://www.k35.com/static/ 
+curl -I http://www.k35.com/app/ 
+curl -I http://www.k35.com/app/about 
+curl -I http://sirion.k35.com/app/about 
 ```
-
-- Akses ke Web Dinamis (Menampilkan konten dari Vingilot (web dinamis)).
-```
-lynx http://www.k35.com/app/
-```
+<img width="749" height="631" alt="Screenshot 2025-10-23 030044" src="https://github.com/user-attachments/assets/f84a1511-3469-40bf-91fe-54bc14486aef" />
 
 ` Akses langsung via IP
 ```
@@ -522,9 +519,10 @@ Tujuan langkah ini adalah memastikan bahwa path administratif tidak dapat diakse
 Gunakan lynx atau curl untuk menguji akses.
 ```
 curl -I http://www.k35.com/admin/
-curl -I -u admin:jarkom http://www.k35.com/admin/ (benar)
-curl -I -u admin:admin http://www.k35.com/admin/ (salah)
 ```
+
+<img width="432" height="133" alt="Screenshot 2025-10-23 025452" src="https://github.com/user-attachments/assets/9a4301ce-2241-4cb0-ad2d-04da29d1c260" />
+
 
 # 13
 Pada tahap ini, konfigurasi dilakukan pada Sirion, yang berfungsi sebagai reverse proxy dalam sistem jaringan domain k35.com.
@@ -543,11 +541,6 @@ Konfigurasi ini juga menjadi langkah terakhir dalam penyatuan sistem DNS dan lay
 
 #### Pengujian
 
-- Akses via IP → HARUS 301 ke www
-```
-curl -I http://10.81.3.3/
-```
-
 - Akses sirion.k35.com → HARUS 301 ke www
 ```
 curl -I http://sirion.k35.com/app/about
@@ -565,6 +558,8 @@ curl -I http://www.k35.com/app/about
 curl -I http://www.k35.com/admin/
 curl -I -u admin:password http://www.k35.com/admin/
 ```
+<img width="444" height="809" alt="Screenshot 2025-10-23 025621" src="https://github.com/user-attachments/assets/f1d09d4c-8fb1-4875-b7d1-981c3a4d2d36" />
+
 
 # 14
 
@@ -578,6 +573,46 @@ Hasil akhir yang diharapkan:
 -Saat klien (mis. Cirdan) mengakses situs melalui www.k35.com, IP yang muncul di log Vingilot adalah IP klien, bukan IP Sirion.
 
 -Semua permintaan yang datang melalui Sirion masih diteruskan dengan header Host dan X-Real-IP yang benar.
+
+### Pengujian
+
+Kirim request dari client (misalnya dari Cirdan), lalu di Vingilot, lihat log access-nya
+
+```
+curl -I http://www.k35.com/app/about
+tail -n 5 /var/log/nginx/access.log
+```
+
+<img width="738" height="86" alt="Screenshot 2025-10-23 025556" src="https://github.com/user-attachments/assets/be997074-c792-40f3-a185-a5860fd0c2f6" />
+
+<img width="418" height="166" alt="Screenshot 2025-10-23 025539" src="https://github.com/user-attachments/assets/6b7e257d-6965-44ae-b073-8cd864081451" />
+
+# 15
+
+Pada tahap ini dilakukan pengujian performa (benchmark) terhadap dua endpoint utama aplikasi, yaitu:
+
+- http://www.k35.com/app/ (endpoint dinamis), dan
+
+- http://www.k35.com/static/ (endpoint statis).
+
+Pengujian dilakukan dari node Elrond menggunakan tool ApacheBench (ab) untuk mengukur kemampuan server Sirion dalam menangani sejumlah besar permintaan secara bersamaan.
+Tujuan pengujian ini adalah untuk melihat respon time, request per second, dan stabilitas sistem di bawah beban 500 permintaan dengan concurrency 10, serta membandingkan performa antara konten dinamis dan statis.
+
+
+Hasil benchmark kemudian disimpan dalam file dan diparsing menjadi tabel ringkas untuk memudahkan analisis performa.
+
+### Langkah Teknis
+1. Install ApacheBench di Node Elrond
+
+2. Jalankan Benchmark untuk Setiap Endpoint
+
+3. Buat Script untuk Parsing Hasil Benchmark
+
+4. Jalankan Script Parser
+
+![WhatsApp Image 2025-10-23 at 3 07 00 AM](https://github.com/user-attachments/assets/b4229c69-befd-4484-b25a-a67f86a8f006)
+
+
 
 
 
