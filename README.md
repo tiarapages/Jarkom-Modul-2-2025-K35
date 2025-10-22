@@ -209,146 +209,160 @@ Contoh :
 
   # 4
 
-  Di Node Tirion
-  
-```
-  mkdir /etc/bind/zones
-  nano /etc/bind/named.conf.local
- ```
-Edit Konfigurasi Lokal
-```
-zone "k35.com" {
- type master;
- file "/etc/bind/zones/k35.com";
- notify yes;
- allow-transfer { 10.81.3.4; };
- also-notify { 10.81.3.4; };
- };
- nano /etc/bind/named.conf.options
- forwarders {
- 192.168.122.1;
- };
- nano /etc/bind/zone.template
- $TTL    604800          ; Waktu cache default (detik)
- @       IN      SOA     localhost. root.localhost. (
- 2025100401 ; Serial (format YYYYMMDDXX)
- 604800     ; Refresh (1 minggu)
- 86400      ; Retry (1 hari)
- 2419200    ; Expire (4 minggu)
- 604800 )   ; Negative Cache TTL
- ;
- @       IN      NS      localhost.
- @       IN      A       127.0.0.1
-```
-Masukkan `cp /etc/bind/zone.template /etc/bind/zones/k35.com`
-dan edit konfigurasi zones 35 `nano /etc/bind/zones/k35.com`
+### konfigurasi layanan DNS (Domain Name System) menggunakan dua server, yaitu:
 
-```
- $TTL    604800          ; Waktu cache default (detik)
-@       IN      SOA     k35.com. root.k35.com. (
- 2025100401 ; Serial (format YYYYMMDDXX)
- 604800     ; Refresh (1 minggu)
- 86400      ; Retry (1 hari)
- 2419200    ; Expire (4 minggu)
- 604800 )   ; Negative Cache TTL
- ;
- @       IN      NS      ns1.k35.com.
- @       IN      NS      ns2.k35.com.
- @       IN      A       10.81.3.2;
- ns1     IN      A       10.81.3.3;
- ns2     IN      A       10.81.3.4;
-```
-Restart service bind9 ` service bind9 restart`
-Di Node Valmar
-Edit Konfigurasi Lokal ` nano /etc/bind/named.conf.local`
+- Tirion (ns1/master) sebagai DNS authoritative master.
 
-```
- zone "k35.com" {  
-type slave;  
-masters { 10.81.3.3; };
- file "/etc/bind/zones/k35.com";  
-};
-```
+- Valmar (ns2/slave) sebagai DNS slave.
 
-Restart service bind9 ` service bind9 restart`
+Keduanya mengelola zona <xxxx>.com, dengan konfigurasi SOA, NS, dan A record sesuai ketentuan. Selain itu, konfigurasi juga mencakup pengaturan notify, allow-transfer, serta forwarders untuk menunjang replikasi zona dan resolusi DNS.
 
-di client masukkan nameserver kedalam solv.conf
-```
-nameserver 192.239.3.3
-nameserver 192.239.3.4
-```
-<img width="820" height="310" alt="image" src="https://github.com/user-attachments/assets/cf3ea9a3-e757-4441-a420-a7e86ae59b83" />
+### Struktur File Shell Script
 
-Hasil Ping yang berfungsi
+- tirion.sh → konfigurasi untuk server master (ns1)
+
+- valmar.sh → konfigurasi untuk server slave (ns2)
+
+- cirdan.sh → konfigurasi resolver pada client
+
+### Beri izin eksekusi pada semua file
+```
+chmod +x tirion.sh valmar.sh cirdan.sh
+```
+### Jalankan konfigurasi
+```
+./tirion.sh
+./valmar.sh
+./cirdan.sh
+```
+### Tes pada client
+```
+ping k35.com
+```
+konfigurasi DNS master–slave berhasil dilakukan. Zona <xxxx>.com dapat diakses dan direplikasi dengan baik antara server Tirion (master) dan Valmar (slave), serta klien dapat melakukan resolusi nama domain dengan benar melalui ns1 dan ns2.
+
+<img width="676" height="105" alt="Screenshot 2025-10-21 002155" src="https://github.com/user-attachments/assets/9a159260-0b04-44f4-80e3-3a37bd40ccb5" />
 
 # 5
-Di Node Tirion Lakukan Konfigurasi zone ` nano /etc/bind/zones/k56.com`
+
+konfigurasi dilakukan di Tirion (ns1/master) untuk menamai setiap host sesuai glosarium dan menambahkan entri domain <hostname>.<xxxx>.com pada zona DNS <xxxx>.com.
+Semua hostname harus dikenali system-wide, dan verifikasi dilakukan dengan ping ke salah satu domain (contoh: elrond.k35.com).
+
+### Beri Izin Eksekusi
 ```
- $TTL    604800          ; Waktu cache default (detik)
- @       IN      SOA     k35.com. root.k35.com. (
- 2025100401 ; Serial (format YYYYMMDDXX)
- 604800     ; Refresh (1 minggu)
- 86400      ; Retry (1 hari)
- 2419200    ; Expire (4 minggu)
- 604800 )   ; Negative Cache TTL
- ;
- @       IN      NS      ns1.k35.com.
- @       IN      NS      ns2.k35.com.
- @       IN      A       10.81.3.2;
- ns1     IN      A       10.81.3.3;
- ns2     IN      A       10.81.3.4;
- eonwe   IN      A       10.81.1.1;
- earendil IN     A       10.81.1.2;
- elwing  IN      A       10.81.1.3;
- cirdan  IN      A       10.81.2.2;
- elrond  IN      A       10.81.2.3;
- maglor  IN      A       10.81.2.4;
- sirion  IN      A       10.81.3.2;
- lindon  IN      A       10.81.3.5;
- vingilot IN     A       10.81.3.6;
+chmod +x tirion.sh
 ```
-Restart service agar berjalan `service bind9 restart`
+
+### Jalankan Script
+```
+./tirion.sh
+```
+
+### Verifikasi
+
+Setelah konfigurasi selesai, pastikan DNS menjawab query dengan benar:
+
+- Uji resolusi nama
+- ping elrond.k35.com
+
+### Jika alamat IP yang muncul sesuai dengan IP Cirdan yang telah ditentukan
+
+- Zona DNS sudah berfungsi
+
+- Hostname dikenali system-wide
+  
+- Konfigurasi berhasil
+
+### Hasil yang Diharapkan
+
+- Semua hostname sesuai glosarium dikenali.
+
+- Domain <hostname>.k35.com dapat di-resolve dari ns1 (Tirion).
+
+- ping elrond.k35.com berhasil dengan IP Cirdan yang benar.
+
 <img width="703" height="192" alt="image" src="https://github.com/user-attachments/assets/0c01b20e-2ac0-44ae-b6e5-6e475e7f45ce" />
 
 # 6
-Jalankan dig untuk melihat serial number ` dig @10.81.3.3 k35.com SOA`
+
+dilakukan verifikasi zone transfer antara server master (Tirion/ns1) dan server slave (Valmar/ns2).
+Tujuannya adalah memastikan bahwa zona k35.com berhasil dikirim dari ns1 ke ns2, serta serial number pada record SOA di keduanya sama, menandakan sinkronisasi berhasil.
+
+### Cek SOA Record dari ns1 (Tirion)
+```
+dig @10.81.3.3 k35.com SOA
+```
 <img width="1184" height="477" alt="image" src="https://github.com/user-attachments/assets/14c86100-a600-4098-9075-4377223903a0" />
-Jalankan dig juga untuk melihat serial number `dig @192.239.3.4 k35.com SOA`
+
+### Cek SOA Record dari ns2 (Valmar):
+```
+dig @10.81.3.4 k35.com SOA
+```
 <img width="1167" height="455" alt="image" src="https://github.com/user-attachments/assets/5144f5e0-152f-472a-9b82-53943c46e6e0" />
 
+### Pastikan Serial Number Sama
+
+- Perhatikan baris Serial: pada output kedua perintah di atas.
+
+- Jika angka serial sama, berarti zona <xxxx>.com sudah tersinkronisasi dengan baik antara master dan slave.
+
 # 7
-Di Tirion
-Edit konfigurasi zones `nano /etc/bind/zones/k35.com`
+
+menambahkan A record dan CNAME ke zona DNS <xxxx>.com pada server Tirion (ns1/master).
+Ketiga host utama dilambangkan sebagai:
+
+- Sirion → gerbang utama (front door)
+
+- Lindon → web statis
+
+- Vingilot → web dinamis
+
+Selain itu, ditambahkan CNAME alias agar domain utama (www, static, dan app) dapat diarahkan ke host masing-masing.
+
+### Tujuan
+
+- Menambahkan A record untuk sirion, lindon, dan vingilot.
+
+- Menambahkan alias CNAME:
+
+-www → sirion
+
+-static → lindon
+
+-app → vingilot
+
+- Memastikan domain dapat di-resolve dengan benar dari klien.
+
+### Buat File di Tirion file tirion.sh
+
+### Beri Izin Eksekusi
 ```
- $TTL    604800          ; Waktu cache default (detik)
- @       IN      SOA     k35.com. root.k35.com. (
- 2025100401 ; Serial (format YYYYMMDDXX)
- 604800     ; Refresh (1 minggu)
- 86400      ; Retry (1 hari)
- 2419200    ; Expire (4 minggu)
- 604800 )   ; Negative Cache TTL
- ;
- @       IN      NS      ns1.k35.com.
- @       IN      NS      ns2.k35.com.
- @       IN      A       10.81.3.2;
- ns1     IN      A       10.81.3.3;
- ns2     IN      A       10.81.3.4;
- eonwe   IN      A       10.81.1.1;
- earendil IN      A       10.81.1.2;
- elwing  IN      A       10.81.1.3;
- cirdan  IN      A       10.81.2.2;
- elrond  IN      A       10.81.2.3;
- maglor  IN      A       10.81.2.4;
- sirion  IN      A       10.81.3.2;
- lindon  IN      A       10.81.3.5;
- vingilot IN      A       10.81.3.6;
- www     IN      CNAME   sirion.k35.com.
- static  IN      CNAME   lindon.k35.com.
- app     IN      CNAME   vingilot.k35.com.
+chmod +x tirion.sh
 ```
-Restart kembali service `service bind9 restart`
-<img width="850" height="589" alt="image" src="https://github.com/user-attachments/assets/a9b2d0db-8ba0-4202-8d3a-90d33b5a794a" />
-<img width="803" height="515" alt="image" src="https://github.com/user-attachments/assets/26ec0c8f-5d2f-4900-b891-e9a27bec44c7" />
+
+### Jalankan Script
+```
+./tirion.sh
+```
+
+### tes langsung dengan ping
+```
+ping www.k35.com
+ping static.k35.com
+ping app.k35.com
+```
+
+### Hasil yang Diharapkan:
+
+Domain	Mengarah ke	IP
+- www.k35.com -> sirion.k35.com
+<img width="936" height="467" alt="Screenshot 2025-10-21 002901" src="https://github.com/user-attachments/assets/efa4bec5-db61-481a-92b8-58d7d83f5934" />
+
+- static.k35.com	-> lindon.k35.com
+  
+- app.k35.com	-> vingilot.k35.com
+
+
 
 # 8
 Di Tirion
