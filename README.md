@@ -612,6 +612,11 @@ Hasil benchmark kemudian disimpan dalam file dan diparsing menjadi tabel ringkas
 
 ![WhatsApp Image 2025-10-23 at 3 07 00 AM](https://github.com/user-attachments/assets/b4229c69-befd-4484-b25a-a67f86a8f006)
 
+Untuk kebutuhan analisis yang valid, kita dapat memasukkan analisis performa melalui 2 tipe kasus yaitu statis dan dinamis. 
+Yang pertama kita dapat melihat ananlisis yang dinamis
+<img width="698" height="703" alt="image" src="https://github.com/user-attachments/assets/ca6acf55-2d83-451b-bc15-8dcab0f83971" />
+
+
 
 
 
