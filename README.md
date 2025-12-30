@@ -695,7 +695,9 @@ Berdasarkan hasil query yang diperoleh, dapat disimpulkan bahwa perubahan konfig
 Klien Earendil berhasil melakukan permintaan DNS dan menerima record A terbaru yang menunjukkan bahwa perubahan alamat IP telah aktif dan dapat diakses. Selain itu, nilai TTL sebesar 30 detik juga berhasil diterima oleh klien, menandakan bahwa pengaturan TTL spesifik pada record telah diterapkan dan akan digunakan sebagai acuan mekanisme caching untuk permintaan selanjutnya.
 
 Dengan demikian, dapat dipastikan bahwa perubahan record A di server DNS Tirion telah berhasil, tersinkronisasi, dan dapat diakses dengan benar oleh klien.
-<img width="694" height="791" alt="image" src="https://github.com/user-attachments/assets/acf52c24-e5c5-4a1a-a416-e7b6ab6cc786" />
+
+<img width="557" height="698" alt="image" src="https://github.com/user-attachments/assets/5a0fbf5b-a01b-477c-b3cf-9202300d9620" />
+
 
 
 # 17
@@ -743,7 +745,8 @@ chgrp bind /etc/bind/rndc.key
 chmod 640 /etc/bind/rndc.key
 ```
 
-<img width="619" height="80" alt="image" src="https://github.com/user-attachments/assets/a0e9a092-004d-474e-b5d1-14ec91e87fdd" />
+<img width="1199" height="669" alt="image" src="https://github.com/user-attachments/assets/55c0717c-df91-41f0-8edb-a0f2e5f70b20" />
+
 
 # 18
 
@@ -772,15 +775,18 @@ Setelah penambahan record selesai, nomor serial SOA dinaikkan untuk menandai ada
 
 Dengan langkah ini, TXT record dan CNAME record telah aktif dan siap diakses oleh klien DNS.
 
-<img width="674" height="441" alt="image" src="https://github.com/user-attachments/assets/c88341e6-044c-4ffb-9521-c2526746b14d" />
+<img width="942" height="682" alt="image" src="https://github.com/user-attachments/assets/dc461702-78e5-43fc-b0a0-9bd0537297ce" />
+
 
 ### Pengujian
 
 Selanjutnya saat kita uji coba menggunakan command dig untuk melihat file txt didalamnya menggunakan masing masing `dig melkor.k55.com TXT` dan `dig melkor.k55.com TXT`. Maka akan muncul kesesuaian yang sebelumnya kita set dalam konfigurasi tersebut
 
-<img width="1024" height="547" alt="image" src="https://github.com/user-attachments/assets/051a572a-21a7-4095-974d-1091fc4f3b72" />
+<img width="1120" height="673" alt="image" src="https://github.com/user-attachments/assets/3ece20f1-e00b-4f49-9991-73ad64b47413" />
 
-<img width="1024" height="518" alt="image" src="https://github.com/user-attachments/assets/a3109122-97c4-4c13-8697-f388bfa2ac01" />
+
+<img width="1015" height="630" alt="image" src="https://github.com/user-attachments/assets/3258c6e5-7e95-42e1-97f5-88f9117da6df" />
+
 
 # 19
 
@@ -806,7 +812,8 @@ Setelah record CNAME berhasil ditambahkan, nomor serial pada SOA dinaikkan untuk
 
 Dengan langkah ini, domain havens.k35.com telah aktif sebagai alias dan dapat diakses melalui domain tujuan yang telah ditentukan.
 
-<img width="1024" height="687" alt="image" src="https://github.com/user-attachments/assets/d32258ff-7882-43f9-9f81-af7cf98e21ba" />
+<img width="984" height="683" alt="image" src="https://github.com/user-attachments/assets/063b5fc3-21d4-4710-ba92-af438b03ef42" />
+
 
 ### Pengujian
 
@@ -860,7 +867,8 @@ File index.html diletakkan pada direktori root web Sirion dengan isi sebagai ber
 </html>
 ```
 
-<img width="1024" height="583" alt="image" src="https://github.com/user-attachments/assets/1214281a-b8bc-44dc-9eb4-ae0cf6dcc821" />
+<img width="1102" height="708" alt="image" src="https://github.com/user-attachments/assets/1da95bfd-3f7a-4d6f-8a8c-78040188af59" />
+
 
 ### Pengujian
 
@@ -868,7 +876,8 @@ Pengujian dilakukan dang media perintah curl untuk membuktikan bahwa landing apg
 
 `curl http://www.k35.com/`
 
-<img width="1024" height="547" alt="image" src="https://github.com/user-attachments/assets/3893c8b0-81a1-44f8-8920-e375a4fdb71f" />
+<img width="1044" height="597" alt="image" src="https://github.com/user-attachments/assets/0f9bbdaa-ab7c-416c-aaee-619c67b2b2b4" />
+
 
 Hal ini membuktikan bahwareverse proxy Sirion berhasil menyajikan hal tersebut ke dalam backend dari server yang terlibat.
 
