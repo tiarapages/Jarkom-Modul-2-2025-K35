@@ -614,8 +614,263 @@ Hasil benchmark kemudian disimpan dalam file dan diparsing menjadi tabel ringkas
 
 Untuk kebutuhan analisis yang valid, kita dapat memasukkan analisis performa melalui 2 tipe kasus yaitu statis dan dinamis. 
 Yang pertama kita dapat melihat ananlisis yang dinamis
-<img width="698" height="703" alt="image" src="https://github.com/user-attachments/assets/ca6acf55-2d83-451b-bc15-8dcab0f83971" />
 
+<img width="698" height="703" alt="image" src="https://github.com/user-attachments/assets/71c8213d-1e13-4e24-8ee2-52eb9a6ac736" />
+
+Selanjutnya kita gunakan command static untuk mengidentifikasi analisis yang statis, sehingga dapat berikan parsing yang sesuai dengan metode analisis singkat yang sebelumnya digunakan
+
+<img width="743" height="668" alt="image" src="https://github.com/user-attachments/assets/2d05f11e-5d2b-42a4-899d-07bffbfb322d" />
+
+
+# 16
+
+
+Konfigurasi DNS Server – Master (Tirion)
+
+Seluruh perubahan konfigurasi DNS dilakukan pada DNS server master, yaitu Tirion. Tujuan konfigurasi ini adalah memperbarui alamat IP host tertentu serta memastikan perubahan tersebut dapat terdistribusi ke DNS server slave dengan benar.
+
+Langkah 1: Pengeditan File Zone
+
+File zone yang dimodifikasi berada pada path berikut:
+
+/etc/bind/k35/k35.com
+
+
+Di dalam file ini, dilakukan dua perubahan utama:
+
+1. Perubahan Record A
+
+Host lindon mengalami pembaruan konfigurasi sebagai berikut:
+
+Alamat IP diubah dari `10.81.3.`5 menjadi `10.81.3.7`
+
+TTL ditentukan secara khusus selama 30 detik untuk record ini
+
+Pengaturan TTL yang lebih kecil memungkinkan propagasi perubahan berlangsung lebih cepat.
+
+2. Pembaruan Serial SOA
+
+Nomor serial pada bagian SOA dinaikkan menjadi:
+
+`2025100402`
+
+Kenaikan serial ini diperlukan agar DNS server slave (Valmar) mendeteksi adanya perubahan zone dan melakukan sinkronisasi ulang.
+
+Penerapan Konfigurasi Baru
+
+File zone diperbarui dengan menimpa konfigurasi lama menggunakan perintah berikut:
+
+```
+cat <<'EOF' > /etc/bind/k35/k35.com
+$TTL    604800
+@       IN      SOA     ns1.k35.com. root.k35.com. (
+                        2025100402 ; Serial telah diperbarui
+                        # ... baris SOA lainnya
+                        )
+
+# ... (record NS dan A lainnya) ...
+
+lindon      30 IN       A      10.81.3.7   ; Update IP dan TTL
+
+# ... (record CNAME lainnya) ...
+EOF
+```
+
+Langkah 2: Restart Layanan bind9
+
+Agar perubahan dapat diterapkan oleh sistem DNS, layanan bind9 perlu direstart:
+
+`service bind9 restart`
+
+Setelah langkah ini dilakukan, konfigurasi DNS terbaru pada server master telah aktif dan siap direplikasi ke server slave.
+
+### Pengujian
+
+Pengujian dilakukan dari sisi klien Earendil menggunakan perintah berikut:
+
+`dig static.k35.com`
+
+Berdasarkan hasil query yang diperoleh, dapat disimpulkan bahwa perubahan konfigurasi DNS telah berhasil diterapkan dengan baik. Server DNS master Tirion telah mengirimkan data terbaru sesuai dengan konfigurasi yang diperbarui.
+
+Klien Earendil berhasil melakukan permintaan DNS dan menerima record A terbaru yang menunjukkan bahwa perubahan alamat IP telah aktif dan dapat diakses. Selain itu, nilai TTL sebesar 30 detik juga berhasil diterima oleh klien, menandakan bahwa pengaturan TTL spesifik pada record telah diterapkan dan akan digunakan sebagai acuan mekanisme caching untuk permintaan selanjutnya.
+
+Dengan demikian, dapat dipastikan bahwa perubahan record A di server DNS Tirion telah berhasil, tersinkronisasi, dan dapat diakses dengan benar oleh klien.
+<img width="694" height="791" alt="image" src="https://github.com/user-attachments/assets/acf52c24-e5c5-4a1a-a416-e7b6ab6cc786" />
+
+
+# 17
+
+Andaikata bumi bergetar dan semua tertidur sejenak, mereka harus bangkit sendiri. Pastikan layanan inti bind9 di ns1/ns2, nginx di Sirion/Lindon, dan PHP-FPM di Vingilot autostart saat reboot, lalu verifikasi layanan kembali menjawab sesuai fungsinya.
+
+### Langkah teknis konfigurasi
+
+Konfigurasi dilakukan langsung pada masing-masing server sesuai dengan peran layanannya. Perintah update-rc.d <service> defaults digunakan untuk menambahkan script layanan ke runlevel default, sehingga layanan akan otomatis dijalankan saat sistem menyala.
+
+1. Server Tirion (DNS Master) dan Valmar (DNS Slave)
+
+Pada kedua server DNS, layanan BIND9 dikonfigurasi agar aktif otomatis saat booting.
+
+`update-rc.d bind9 defaults`
+
+2. Server Sirion (Reverse Proxy)
+
+Server ini berperan sebagai reverse proxy, sehingga layanan Nginx harus selalu aktif setelah reboot.
+
+`update-rc.d nginx defaults`
+
+3. Server Lindon (Web Server Statis)
+
+Untuk melayani konten web statis, layanan Apache2 diaktifkan agar berjalan otomatis.
+
+`update-rc.d apache2 defaults`
+
+4. Server Vingilot (Web Server Dinamis)
+
+Server ini menggunakan Apache2 untuk web server dan PHP-FPM untuk pemrosesan konten dinamis. Kedua layanan tersebut dikonfigurasi agar aktif saat sistem boot.
+
+```
+update-rc.d apache2 defaults
+update-rc.d php8.4-fpm defaults
+```
+
+### Pengujian
+
+Pengujian dilakukan dengan percobaan reboot pada server dimana reboot harus benar benar berhasil dan dapat kita lihat jika server berjalan dengan semstinya atau running. Apabila reboot masih belum cukup berhasil kita dapat gunakan perubahan hak akses atau kedalam bind yang digunakan oleh server saat itu.
+
+```
+chown -R bind:bind /var/cache/bind
+chgrp bind /etc/bind/rndc.key
+chmod 640 /etc/bind/rndc.key
+```
+
+<img width="619" height="80" alt="image" src="https://github.com/user-attachments/assets/a0e9a092-004d-474e-b5d1-14ec91e87fdd" />
+
+# 18
+
+Sang musuh memiliki banyak nama. Tambahkan melkor..com sebagai record TXT berisi “Morgoth (Melkor)” dan tambahkan morgoth..com sebagai CNAME → melkor..com, verifikasi query TXT terhadap melkor dan bahwa query ke morgoth mengikuti aliasnya.
+
+Seluruh pengaturan DNS dilakukan pada server DNS master, yaitu Tirion. Pada tahap ini, kami menambahkan dua record baru ke dalam file zone utama yang berada di path berikut:
+
+`/etc/bind/k35/k35.com`
+
+Penambahan dilakukan pada bagian akhir file zone dengan tujuan membuat TXT record dan CNAME record sebagai berikut:
+
+`melkor IN TXT "Morgoth (Melkor)"` Record ini mendefinisikan sebuah TXT record untuk domain melkor.k35.com yang berisi teks "Morgoth (Melkor)" dan `morgoth IN CNAME melkor.k35.com.` Record ini menjadikan morgoth.k35.com sebagai alias (CNAME) yang mengarah ke domain melkor.k35.com.
+
+Konfigurasi tersebut ditambahkan menggunakan perintah berikut:
+
+```
+cat <<EOF >> /etc/bind/k35/k35.com
+; TXT dan CNAME record
+melkor       IN      TXT     "Morgoth (Melkor)"
+morgoth      IN      CNAME   melkor.k35.com.
+EOF
+```
+Setelah penambahan record selesai, nomor serial SOA dinaikkan untuk menandai adanya perubahan pada zone. Selanjutnya, layanan bind9 direstart agar konfigurasi baru dapat diterapkan oleh server DNS.
+
+`service bind9 restart`
+
+Dengan langkah ini, TXT record dan CNAME record telah aktif dan siap diakses oleh klien DNS.
+
+<img width="674" height="441" alt="image" src="https://github.com/user-attachments/assets/c88341e6-044c-4ffb-9521-c2526746b14d" />
+
+### Pengujian
+
+Selanjutnya saat kita uji coba menggunakan command dig untuk melihat file txt didalamnya menggunakan masing masing `dig melkor.k55.com TXT` dan `dig melkor.k55.com TXT`. Maka akan muncul kesesuaian yang sebelumnya kita set dalam konfigurasi tersebut
+
+<img width="1024" height="547" alt="image" src="https://github.com/user-attachments/assets/051a572a-21a7-4095-974d-1091fc4f3b72" />
+
+<img width="1024" height="518" alt="image" src="https://github.com/user-attachments/assets/a3109122-97c4-4c13-8697-f388bfa2ac01" />
+
+# 19
+
+Pelabuhan diperluas bagi para pelaut. Tambahkan havens..com sebagai CNAME → www..com, lalu akses layanan melalui hostname tersebut dari dua klien berbeda untuk memastikan resolusi dan rute aplikasi berfungsi.
+
+Pada tahap ini, perubahan DNS dilakukan langsung pada server master Tirion. Konfigurasi yang dibutuhkan cukup sederhana, yaitu dengan menambahkan satu record CNAME ke dalam file zone utama yang berada pada lokasi berikut:
+
+`/etc/bind/k35/k35.com`
+
+Record yang ditambahkan bertujuan untuk menjadikan domain havens.k35.com sebagai alias yang mengarah ke domain utama www.k35.com.
+
+Penambahan konfigurasi dilakukan menggunakan perintah berikut:
+
+```
+cat <<EOF >> /etc/bind/k35/k35.com
+havens      IN      CNAME    www.k35.com.
+EOF
+```
+
+Setelah record CNAME berhasil ditambahkan, nomor serial pada SOA dinaikkan untuk menandai adanya perubahan pada zone. Selanjutnya, layanan bind9 direstart agar konfigurasi baru dapat dimuat dan digunakan oleh server DNS.
+
+`service bind9 restart`
+
+Dengan langkah ini, domain havens.k35.com telah aktif sebagai alias dan dapat diakses melalui domain tujuan yang telah ditentukan.
+
+<img width="1024" height="687" alt="image" src="https://github.com/user-attachments/assets/d32258ff-7882-43f9-9f81-af7cf98e21ba" />
+
+### Pengujian
+
+Selanjutnya kita uji dengan menggunakan curl di masing masing server, sehingga nanti kita dapat melihat jika pesan akan muncul, kita akan melakukannya dari dalam terminal cirdan dan erendil
+
+<img width="827" height="77" alt="image" src="https://github.com/user-attachments/assets/b88de682-8bb0-4294-a032-180b297e0d5a" />
+
+<img width="972" height="95" alt="image" src="https://github.com/user-attachments/assets/b5f3721a-fc45-48d0-983b-759ebe3795dd" />
+
+Dengan ini kita berhasil mengakses layanan hostname sesuai dengan yang diminta soal denga menbggunakan `havens.com`
+
+# 20
+
+Kisah ditutup di beranda Sirion. Sediakan halaman depan bertajuk “War of Wrath: Lindon bertahan” yang memuat tautan ke /app dan /static. Pastikan seluruh klien membuka beranda dan menelusuri kedua tautan tersebut menggunakan hostname (mis. www..com), bukan IP address.
+
+Halaman ini menampilkan judul “War of Wrath: Lindon Bertahan” dan menyediakan dua tautan navigasi menuju layanan web statis dan aplikasi.
+
+Seluruh akses dilakukan menggunakan hostname domain (misalnya www.k35.com) dan bukan alamat IP langsung, guna memastikan integrasi DNS dan reverse proxy berjalan sebagaimana mestinya.
+
+Struktur Halaman Beranda
+
+Halaman utama disajikan pada root web server Sirion dan memuat:
+
+Judul halaman: War of Wrath: Lindon Bertahan
+
+Tautan menuju:
+
+/app → layanan web dinamis
+
+/static → layanan web statis
+
+Implementasi Halaman
+
+File index.html diletakkan pada direktori root web Sirion dengan isi sebagai berikut:
+
+```
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>War of Wrath: Lindon Bertahan</title>
+</head>
+<body>
+    <h1>War of Wrath: Lindon Bertahan</h1>
+    <p>Beranda utama untuk mengakses seluruh layanan.</p>
+    <ul>
+        <li><a href="/app">Akses Aplikasi</a></li>
+        <li><a href="/static">Akses Konten Statis</a></li>
+    </ul>
+</body>
+</html>
+```
+
+<img width="1024" height="583" alt="image" src="https://github.com/user-attachments/assets/1214281a-b8bc-44dc-9eb4-ae0cf6dcc821" />
+
+### Pengujian
+
+Pengujian dilakukan dang media perintah curl untuk membuktikan bahwa landing apge sderhana yang dibuat ebrhasil diakses dengan sempurna melaui terminal
+
+`curl http://www.k35.com/`
+
+<img width="1024" height="547" alt="image" src="https://github.com/user-attachments/assets/3893c8b0-81a1-44f8-8920-e375a4fdb71f" />
+
+Hal ini membuktikan bahwareverse proxy Sirion berhasil menyajikan hal tersebut ke dalam backend dari server yang terlibat.
 
 
 
